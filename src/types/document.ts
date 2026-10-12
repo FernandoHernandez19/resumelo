@@ -1,6 +1,6 @@
 export interface PageText {
-  /** Número de página (desde 1). En TXT es siempre 1. */
-  page: number;
+  /** Número de página (desde 1), o null en archivos sin páginas (TXT). */
+  page: number | null;
   text: string;
 }
 

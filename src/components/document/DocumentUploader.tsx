@@ -1,8 +1,16 @@
 "use client";
 
-import { useId, useState, type ChangeEvent, type DragEvent } from "react";
-import { Badge, Card } from "@/components/ui";
+import {
+  useId,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+} from "react";
+import { DocumentSummary } from "@/components/document/DocumentSummary";
+import { Card } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { extractText, type ExtractProgress } from "@/lib/extractText";
 import { validateFile } from "@/lib/validateFile";
 import { useDocumentStore } from "@/store/useDocumentStore";
 
@@ -10,30 +18,84 @@ export function DocumentUploader() {
   const inputId = useId();
   const errorId = `${inputId}-error`;
   const [isDragging, setIsDragging] = useState(false);
+  const [progress, setProgress] = useState<ExtractProgress | null>(null);
+  const currentRun = useRef(0);
   const file = useDocumentStore((s) => s.file);
+  const status = useDocumentStore((s) => s.status);
   const error = useDocumentStore((s) => s.error);
+  const text = useDocumentStore((s) => s.text);
+  const pages = useDocumentStore((s) => s.pages);
   const setFile = useDocumentStore((s) => s.setFile);
+  const startReading = useDocumentStore((s) => s.startReading);
+  const setReady = useDocumentStore((s) => s.setReady);
   const setError = useDocumentStore((s) => s.setError);
+  const reset = useDocumentStore((s) => s.reset);
 
-  function handleFile(candidate: File | undefined) {
+  async function handleFile(candidate: File | undefined) {
     if (!candidate) return;
+    const run = ++currentRun.current;
     const message = validateFile(candidate);
     if (message) {
       setError(message);
       return;
     }
     setFile(candidate);
+    startReading();
+    setProgress(null);
+    try {
+      const result = await extractText(candidate, (p) => {
+        if (run === currentRun.current) setProgress(p);
+      });
+      if (run !== currentRun.current) return;
+      setReady({ text: result.text, pages: result.pages, chunks: [] });
+    } catch (e) {
+      if (run !== currentRun.current) return;
+      setError(e instanceof Error ? e.message : "No se pudo leer el archivo.");
+    } finally {
+      if (run === currentRun.current) setProgress(null);
+    }
+  }
+
+  function handleRemove() {
+    currentRun.current++;
+    setProgress(null);
+    reset();
+  }
+
+  if (status === "ready" && file) {
+    const isPdf = file.type === "application/pdf";
+    return (
+      <DocumentSummary
+        name={file.name}
+        pages={isPdf ? pages.length : null}
+        characters={text.length}
+        onRemove={handleRemove}
+      />
+    );
+  }
+
+  if (status === "reading" && file) {
+    return (
+      <Card className="flex flex-col gap-1" aria-busy="true">
+        <span className="break-all font-medium">{file.name}</span>
+        <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
+          {progress
+            ? `Leyendo página ${progress.current} de ${progress.total}`
+            : "Leyendo documento…"}
+        </p>
+      </Card>
+    );
   }
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
-    handleFile(event.target.files?.[0]);
+    void handleFile(event.target.files?.[0]);
     event.target.value = "";
   }
 
   function handleDrop(event: DragEvent<HTMLLabelElement>) {
     event.preventDefault();
     setIsDragging(false);
-    handleFile(event.dataTransfer.files[0]);
+    void handleFile(event.dataTransfer.files[0]);
   }
 
   return (
@@ -73,12 +135,6 @@ export function DocumentUploader() {
       {error && (
         <p id={errorId} role="alert" className="text-sm text-red-700 dark:text-red-400">
           {error}
-        </p>
-      )}
-      {file && (
-        <p className="flex flex-wrap items-center gap-2 text-sm">
-          <Badge>Archivo</Badge>
-          <span className="break-all">{file.name}</span>
         </p>
       )}
     </Card>
