@@ -1,3 +1,4 @@
+import { ChatPanel } from "@/components/chat/ChatPanel";
 import { ChunkPreview } from "@/components/document/ChunkPreview";
 import { DocumentUploader } from "@/components/document/DocumentUploader";
 import { Badge } from "@/components/ui";
@@ -16,6 +17,7 @@ export default function Home() {
       </header>
       <DocumentUploader />
       <ChunkPreview />
+      <ChatPanel />
     </main>
   );
 }
