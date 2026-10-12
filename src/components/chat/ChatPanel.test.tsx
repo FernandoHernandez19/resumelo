@@ -71,7 +71,8 @@ describe("ChatPanel", () => {
     expect(await screen.findByText("Escribiendo…")).toBeInTheDocument();
     await act(async () => current.push("Dice "));
     await act(async () => current.push("hola [1]"));
-    expect(await screen.findByText("Dice hola [1]")).toBeInTheDocument();
+    expect(await screen.findByText(/Dice hola/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ver fuente 1, página 1" })).toBeInTheDocument();
 
     await act(async () => current.close());
     await waitFor(() => expect(screen.queryByText("Escribiendo…")).not.toBeInTheDocument());

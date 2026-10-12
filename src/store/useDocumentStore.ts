@@ -8,6 +8,7 @@ interface DocumentState {
   text: string;
   pages: PageText[];
   chunks: Chunk[];
+  activeChunkId: number | null;
 }
 
 interface DocumentActions {
@@ -15,6 +16,7 @@ interface DocumentActions {
   startReading: () => void;
   setReady: (data: { text: string; pages: PageText[]; chunks: Chunk[] }) => void;
   setError: (message: string) => void;
+  setActiveChunk: (id: number | null) => void;
   reset: () => void;
 }
 
@@ -27,6 +29,7 @@ const initialState: DocumentState = {
   text: "",
   pages: [],
   chunks: [],
+  activeChunkId: null,
 };
 
 // El contenido del documento vive solo en memoria: no se persiste ni se envía.
@@ -38,5 +41,6 @@ export const useDocumentStore = create<DocumentStore>()((set) => ({
     set({ status: "ready", error: null, text, pages, chunks }),
   setError: (message) =>
     set({ ...initialState, status: "error", error: message }),
+  setActiveChunk: (id) => set({ activeChunkId: id }),
   reset: () => set({ ...initialState }),
 }));
