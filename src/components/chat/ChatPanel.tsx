@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button, Card, Input } from "@/components/ui";
-import { streamChat } from "@/lib/chatClient";
+import { getFriendlyError, streamChat } from "@/lib/chatClient";
 import { MAX_QUESTION_LENGTH } from "@/lib/chatLimits";
 import { retrieveChunks } from "@/lib/retrieve";
 import { useChatStore, type ChatMessage } from "@/store/useChatStore";
@@ -50,13 +50,23 @@ export function ChatPanel() {
       } else {
         updateMessage(assistantId, {
           status: "error",
-          content: "No pudimos generar la respuesta.",
+          error: getFriendlyError(error),
         });
       }
     } finally {
       if (controllerRef.current === controller) controllerRef.current = null;
       setStreaming(false);
     }
+  }
+
+  function handleRetry(assistantId: string) {
+    if (streaming || !ready) return;
+    const list = useChatStore.getState().messages;
+    const index = list.findIndex((m) => m.id === assistantId);
+    const asked = list[index - 1];
+    if (!asked || asked.role !== "user") return;
+    updateMessage(assistantId, { content: "", status: "streaming", error: undefined });
+    void run(assistantId, asked.content);
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -90,7 +100,12 @@ export function ChatPanel() {
           </p>
         )}
         {messages.map((message) => (
-          <MessageBubble key={message.id} message={message} />
+          <MessageBubble
+            key={message.id}
+            message={message}
+            canRetry={!streaming && message.id === messages[messages.length - 1]?.id}
+            onRetry={() => handleRetry(message.id)}
+          />
         ))}
       </div>
 
@@ -118,7 +133,13 @@ export function ChatPanel() {
   );
 }
 
-function MessageBubble({ message }: { message: ChatMessage }) {
+interface MessageBubbleProps {
+  message: ChatMessage;
+  canRetry: boolean;
+  onRetry: () => void;
+}
+
+function MessageBubble({ message, canRetry, onRetry }: MessageBubbleProps) {
   const isUser = message.role === "user";
   return (
     <div
@@ -132,6 +153,18 @@ function MessageBubble({ message }: { message: ChatMessage }) {
       <p className="whitespace-pre-wrap break-words">{message.content}</p>
       {message.status === "streaming" && (
         <p className="mt-1 text-xs italic opacity-70">Escribiendo…</p>
+      )}
+      {message.status === "error" && (
+        <div className="mt-1 flex flex-col items-start gap-2">
+          <p role="alert" className="text-red-700 dark:text-red-400">
+            {message.error}
+          </p>
+          {canRetry && (
+            <Button variant="secondary" onClick={onRetry}>
+              Reintentar
+            </Button>
+          )}
+        </div>
       )}
       {message.status === "stopped" && (
         <p className="mt-1 text-xs italic opacity-70">Respuesta detenida.</p>

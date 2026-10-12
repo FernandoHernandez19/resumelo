@@ -8,6 +8,8 @@ export interface ChatMessage {
   role: ChatRole;
   content: string;
   status: MessageStatus;
+  /** Mensaje de error amigable cuando status === "error". */
+  error?: string;
 }
 
 interface ChatState {
