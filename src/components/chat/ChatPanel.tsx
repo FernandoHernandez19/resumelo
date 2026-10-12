@@ -6,8 +6,11 @@ import { Button, Card, Input } from "@/components/ui";
 import { getFriendlyError, streamChat } from "@/lib/chatClient";
 import { MAX_QUESTION_LENGTH } from "@/lib/chatLimits";
 import { retrieveChunks } from "@/lib/retrieve";
+import { selectSummaryChunks, SUMMARY_USER_MESSAGE } from "@/lib/summarySample";
 import { useChatStore, type ChatMessage } from "@/store/useChatStore";
 import { useDocumentStore } from "@/store/useDocumentStore";
+
+type Job = { task: "chat"; question: string } | { task: "summary" };
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === "AbortError";
@@ -33,17 +36,34 @@ export function ChatPanel() {
     }
   }, [ready, clear]);
 
-  async function run(assistantId: string, text: string) {
+  async function run(assistantId: string, job: Job) {
     const controller = new AbortController();
     controllerRef.current = controller;
     setStreaming(true);
     try {
-      await streamChat({
-        question: text,
-        chunks: retrieveChunks(text, chunks),
-        signal: controller.signal,
-        onText: (piece) => appendToMessage(assistantId, piece),
-      });
+      const onText = (piece: string) => appendToMessage(assistantId, piece);
+      if (job.task === "summary") {
+        const sample = selectSummaryChunks(chunks);
+        updateMessage(assistantId, {
+          note: sample.sampled
+            ? `Resumen basado en ${sample.used} de ${sample.total} fragmentos del documento`
+            : undefined,
+        });
+        await streamChat({
+          question: SUMMARY_USER_MESSAGE,
+          task: "summary",
+          chunks: sample.chunks,
+          signal: controller.signal,
+          onText,
+        });
+      } else {
+        await streamChat({
+          question: job.question,
+          chunks: retrieveChunks(job.question, chunks),
+          signal: controller.signal,
+          onText,
+        });
+      }
       updateMessage(assistantId, { status: "done" });
     } catch (error) {
       if (isAbortError(error)) {
@@ -67,7 +87,12 @@ export function ChatPanel() {
     const asked = list[index - 1];
     if (!asked || asked.role !== "user") return;
     updateMessage(assistantId, { content: "", status: "streaming", error: undefined });
-    void run(assistantId, asked.content);
+    void run(
+      assistantId,
+      list[index].task === "summary"
+        ? { task: "summary" }
+        : { task: "chat", question: asked.content },
+    );
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -81,7 +106,19 @@ export function ChatPanel() {
       content: "",
       status: "streaming",
     });
-    void run(assistantId, text);
+    void run(assistantId, { task: "chat", question: text });
+  }
+
+  function handleSummarize() {
+    if (!ready || streaming) return;
+    addMessage({ role: "user", content: SUMMARY_USER_MESSAGE, status: "done" });
+    const assistantId = addMessage({
+      role: "assistant",
+      content: "",
+      status: "streaming",
+      task: "summary",
+    });
+    void run(assistantId, { task: "summary" });
   }
 
   return (
@@ -123,6 +160,13 @@ export function ChatPanel() {
           <Button type="submit" disabled={!ready || streaming || !question.trim()}>
             Preguntar
           </Button>
+          <Button
+            variant="secondary"
+            disabled={!ready || streaming}
+            onClick={handleSummarize}
+          >
+            Resumir documento
+          </Button>
           {streaming && (
             <Button variant="secondary" onClick={() => controllerRef.current?.abort()}>
               Detener
@@ -155,6 +199,9 @@ function MessageBubble({ message, canRetry, onRetry }: MessageBubbleProps) {
         <p className="whitespace-pre-wrap break-words">{message.content}</p>
       ) : (
         <AssistantText text={message.content} />
+      )}
+      {message.note && (
+        <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">{message.note}</p>
       )}
       {message.status === "streaming" && (
         <p className="mt-1 text-xs italic opacity-70">Escribiendo…</p>

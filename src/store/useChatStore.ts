@@ -10,6 +10,10 @@ export interface ChatMessage {
   status: MessageStatus;
   /** Mensaje de error amigable cuando status === "error". */
   error?: string;
+  /** Aviso bajo la respuesta (p. ej. el resumen se basó en una muestra). */
+  note?: string;
+  /** Marca los mensajes del asistente que son un resumen, para reintentarlos. */
+  task?: "summary";
 }
 
 interface ChatState {

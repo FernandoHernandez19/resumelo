@@ -1,6 +1,9 @@
 import { MAX_REQUEST_CHUNKS, MAX_TOTAL_CHUNK_CHARS } from "@/lib/chatLimits";
 import type { Chunk } from "@/types/document";
 
+/** Texto del mensaje del usuario cuando pide un resumen. */
+export const SUMMARY_USER_MESSAGE = "Resume el documento";
+
 export interface SummarySample {
   chunks: Chunk[];
   /** Fragmentos totales del documento. */

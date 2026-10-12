@@ -25,8 +25,12 @@ export function getFriendlyError(error: unknown): string {
   return "No pudimos generar la respuesta.";
 }
 
+export type ChatTask = "summary";
+
 export interface StreamChatOptions {
   question: string;
+  /** Sin task es una pregunta normal; con "summary" el servidor usa su pregunta fija. */
+  task?: ChatTask;
   chunks: Chunk[];
   signal?: AbortSignal;
   onText: (text: string) => void;
@@ -38,6 +42,7 @@ export interface StreamChatOptions {
  */
 export async function streamChat({
   question,
+  task,
   chunks,
   signal,
   onText,
@@ -45,7 +50,7 @@ export async function streamChat({
   const response = await fetch("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question, chunks }),
+    body: JSON.stringify(task === "summary" ? { task, chunks } : { question, chunks }),
     signal,
   });
 
