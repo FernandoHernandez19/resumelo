@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { AssistantText } from "@/components/chat/AssistantText";
 import { Button, Card, Input } from "@/components/ui";
 import { getFriendlyError, streamChat } from "@/lib/chatClient";
 import { MAX_QUESTION_LENGTH } from "@/lib/chatLimits";
@@ -150,7 +151,11 @@ function MessageBubble({ message, canRetry, onRetry }: MessageBubbleProps) {
       }
     >
       <span className="sr-only">{isUser ? "Tú: " : "Asistente: "}</span>
-      <p className="whitespace-pre-wrap break-words">{message.content}</p>
+      {isUser ? (
+        <p className="whitespace-pre-wrap break-words">{message.content}</p>
+      ) : (
+        <AssistantText text={message.content} />
+      )}
       {message.status === "streaming" && (
         <p className="mt-1 text-xs italic opacity-70">Escribiendo…</p>
       )}
