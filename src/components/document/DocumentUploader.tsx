@@ -10,6 +10,7 @@ import {
 import { DocumentSummary } from "@/components/document/DocumentSummary";
 import { Card } from "@/components/ui";
 import { cn } from "@/lib/cn";
+import { chunkPages } from "@/lib/chunk";
 import { extractText, type ExtractProgress } from "@/lib/extractText";
 import { validateFile } from "@/lib/validateFile";
 import { useDocumentStore } from "@/store/useDocumentStore";
@@ -47,7 +48,7 @@ export function DocumentUploader() {
         if (run === currentRun.current) setProgress(p);
       });
       if (run !== currentRun.current) return;
-      setReady({ text: result.text, pages: result.pages, chunks: [] });
+      setReady({ text: result.text, pages: result.pages, chunks: chunkPages(result.pages) });
     } catch (e) {
       if (run !== currentRun.current) return;
       setError(e instanceof Error ? e.message : "No se pudo leer el archivo.");
