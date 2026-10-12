@@ -1,4 +1,5 @@
-import { Badge, Card } from "@/components/ui";
+import { DocumentUploader } from "@/components/document/DocumentUploader";
+import { Badge } from "@/components/ui";
 
 export default function Home() {
   return (
@@ -12,9 +13,7 @@ export default function Home() {
           Sube un documento, haz preguntas y obtén respuestas con citas del texto.
         </p>
       </header>
-      <Card>
-        <p className="text-sm">Aquí podrás cargar tu documento.</p>
-      </Card>
+      <DocumentUploader />
     </main>
   );
 }
