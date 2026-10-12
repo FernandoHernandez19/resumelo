@@ -5,7 +5,12 @@ import {
   MAX_TOTAL_CHUNK_CHARS,
 } from "@/lib/chatLimits";
 import { getGeminiClient, getGeminiModel } from "@/lib/server/gemini";
-import { buildPrompt, SYSTEM_INSTRUCTION } from "@/lib/server/chatPrompt";
+import {
+  buildPrompt,
+  SUMMARY_INSTRUCTION,
+  SUMMARY_QUESTION,
+  SYSTEM_INSTRUCTION,
+} from "@/lib/server/chatPrompt";
 import type { Chunk } from "@/types/document";
 
 // Runtime Node.js (el predeterminado). `export const runtime` es incompatible con
@@ -26,12 +31,17 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
 type Parsed =
-  | { ok: true; question: string; chunks: Chunk[] }
+  | { ok: true; task: "chat" | "summary"; question: string; chunks: Chunk[] }
   | { ok: false; message: string };
 
 function parseBody(body: unknown): Parsed {
   if (!isRecord(body)) return { ok: false, message: "Solicitud inválida." };
-  const { question, chunks } = body;
+  const { chunks } = body;
+  if (body.task !== undefined && body.task !== "summary") {
+    return { ok: false, message: "Tarea inválida." };
+  }
+  const task = body.task === "summary" ? "summary" : "chat";
+  const question = task === "summary" ? SUMMARY_QUESTION : body.question;
 
   if (typeof question !== "string" || question.trim().length === 0) {
     return { ok: false, message: "Escribe una pregunta." };
@@ -75,7 +85,7 @@ function parseBody(body: unknown): Parsed {
       message: `Los fragmentos no pueden superar ${MAX_TOTAL_CHUNK_CHARS} caracteres en total.`,
     };
   }
-  return { ok: true, question: question.trim(), chunks: parsed };
+  return { ok: true, task, question: question.trim(), chunks: parsed };
 }
 
 function isQuotaError(error: unknown): boolean {
@@ -111,7 +121,11 @@ export async function POST(request: Request): Promise<Response> {
     const stream = await getGeminiClient().models.generateContentStream({
       model: getGeminiModel(),
       contents: buildPrompt(parsed.question, parsed.chunks),
-      config: { systemInstruction: SYSTEM_INSTRUCTION, abortSignal: request.signal },
+      config: {
+        systemInstruction:
+          parsed.task === "summary" ? SUMMARY_INSTRUCTION : SYSTEM_INSTRUCTION,
+        abortSignal: request.signal,
+      },
     });
 
     // Se pide el primer trozo antes de responder para poder devolver 429/500 reales.
