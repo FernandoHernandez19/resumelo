@@ -117,3 +117,63 @@ describe("POST /api/chat", () => {
     expect(response.status).toBe(500);
   });
 });
+
+describe("POST /api/chat con task «summary»", () => {
+  beforeEach(() => {
+    generateContentStream.mockReset();
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+  });
+
+  it("responde 200 sin pregunta y usa la instrucción del resumen", async () => {
+    generateContentStream.mockResolvedValue(stream("- Punto [1]"));
+    const response = await post({ task: "summary", chunks: [chunk(1, "Contenido")] });
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("- Punto [1]");
+    const call = generateContentStream.mock.calls[0][0];
+    expect(call.config.systemInstruction).toContain("4 a 6 viñetas");
+    expect(call.contents).toContain("Resume el documento.");
+  });
+
+  it("ignora una pregunta enviada junto con la tarea", async () => {
+    generateContentStream.mockResolvedValue(stream("ok"));
+    await post({ task: "summary", question: "otra cosa", chunks: [chunk(1)] });
+    expect(generateContentStream.mock.calls[0][0].contents).not.toContain("otra cosa");
+  });
+
+  it.each([
+    ["sin fragmentos", { task: "summary", chunks: [] }],
+    [
+      "más de 8 fragmentos",
+      { task: "summary", chunks: Array.from({ length: 9 }, (_, i) => chunk(i + 1)) },
+    ],
+    [
+      "más de 12 000 caracteres",
+      {
+        task: "summary",
+        chunks: [chunk(1, "a".repeat(MAX_TOTAL_CHUNK_CHARS)), chunk(2, "b")],
+      },
+    ],
+    ["tarea desconocida", { task: "otra", question: "hola", chunks: [chunk(1)] }],
+  ])("mantiene los límites (400): %s", async (_name, body) => {
+    const response = await post(body);
+    expect(response.status).toBe(400);
+    expect(generateContentStream).not.toHaveBeenCalled();
+  });
+
+  it("devuelve 429 y 500 igual que el chat", async () => {
+    generateContentStream.mockRejectedValueOnce(new ApiError({ message: "cuota", status: 429 }));
+    expect((await post({ task: "summary", chunks: [chunk(1)] })).status).toBe(429);
+    generateContentStream.mockRejectedValueOnce(new Error("x"));
+    expect((await post({ task: "summary", chunks: [chunk(1)] })).status).toBe(500);
+  });
+
+  it("sin task, la pregunta sigue siendo obligatoria y se usa la instrucción normal", async () => {
+    expect((await post({ chunks: [chunk(1)] })).status).toBe(400);
+    generateContentStream.mockResolvedValue(stream("ok"));
+    await post({ question: "¿Qué?", chunks: [chunk(1)] });
+    const call = generateContentStream.mock.calls[0][0];
+    expect(call.config.systemInstruction).not.toContain("4 a 6 viñetas");
+    expect(call.contents).toContain("¿Qué?");
+  });
+});
