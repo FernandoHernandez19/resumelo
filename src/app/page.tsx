@@ -1,4 +1,5 @@
 import { ChatPanel } from "@/components/chat/ChatPanel";
+import { SourcePanel } from "@/components/document/SourcePanel";
 import { ChunkPreview } from "@/components/document/ChunkPreview";
 import { DocumentUploader } from "@/components/document/DocumentUploader";
 import { Badge } from "@/components/ui";
@@ -18,6 +19,7 @@ export default function Home() {
       <DocumentUploader />
       <ChunkPreview />
       <ChatPanel />
+      <SourcePanel />
     </main>
   );
 }
