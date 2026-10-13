@@ -128,7 +128,7 @@ export function ChatPanel() {
       <div
         aria-live="polite"
         aria-label="Conversación"
-        className="flex max-h-[28rem] flex-col gap-3 overflow-y-auto"
+        className="flex max-h-[min(28rem,60dvh)] flex-col gap-3 overflow-y-auto"
       >
         {messages.length === 0 && (
           <p className="text-sm text-neutral-600 dark:text-neutral-400">

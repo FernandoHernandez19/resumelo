@@ -8,7 +8,7 @@ import {
   type DragEvent,
 } from "react";
 import { DocumentSummary } from "@/components/document/DocumentSummary";
-import { Card } from "@/components/ui";
+import { Button, Card } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import { chunkPages } from "@/lib/chunk";
 import { extractText, type ExtractProgress } from "@/lib/extractText";
@@ -20,6 +20,7 @@ export function DocumentUploader() {
   const errorId = `${inputId}-error`;
   const [isDragging, setIsDragging] = useState(false);
   const [progress, setProgress] = useState<ExtractProgress | null>(null);
+  const [loadingExample, setLoadingExample] = useState(false);
   const currentRun = useRef(0);
   const file = useDocumentStore((s) => s.file);
   const status = useDocumentStore((s) => s.status);
@@ -54,6 +55,21 @@ export function DocumentUploader() {
       setError(e instanceof Error ? e.message : "No se pudo leer el archivo.");
     } finally {
       if (run === currentRun.current) setProgress(null);
+    }
+  }
+
+  async function handleExample() {
+    setLoadingExample(true);
+    try {
+      const response = await fetch("/ejemplo.txt");
+      if (!response.ok) throw new Error(`Error ${response.status}`);
+      const content = await response.text();
+      // Mismo flujo que una carga normal: validación, extracción y fragmentos.
+      await handleFile(new File([content], "ejemplo.txt", { type: "text/plain" }));
+    } catch {
+      setError("No se pudo cargar el documento de ejemplo. Inténtalo de nuevo.");
+    } finally {
+      setLoadingExample(false);
     }
   }
 
@@ -138,6 +154,11 @@ export function DocumentUploader() {
           {error}
         </p>
       )}
+      <div>
+        <Button variant="secondary" loading={loadingExample} onClick={() => void handleExample()}>
+          Probar con un documento de ejemplo
+        </Button>
+      </div>
     </Card>
   );
 }

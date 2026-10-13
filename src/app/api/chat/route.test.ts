@@ -15,10 +15,14 @@ vi.mock("@/lib/server/gemini", () => ({
 
 const chunk = (id: number, text = "texto") => ({ id, page: 1, text });
 
-function post(body: unknown) {
+let nextIp = 0;
+
+/** Cada petición usa una IP distinta para no activar el limitador por IP. */
+function post(body: unknown, ip = `10.0.0.${++nextIp}`) {
   return POST(
     new Request("http://localhost/api/chat", {
       method: "POST",
+      headers: { "x-forwarded-for": ip },
       body: typeof body === "string" ? body : JSON.stringify(body),
     }),
   );
@@ -175,5 +179,36 @@ describe("POST /api/chat con task «summary»", () => {
     const call = generateContentStream.mock.calls[0][0];
     expect(call.config.systemInstruction).not.toContain("4 a 6 viñetas");
     expect(call.contents).toContain("¿Qué?");
+  });
+});
+
+describe("POST /api/chat con límite de peticiones por IP", () => {
+  beforeEach(() => {
+    generateContentStream.mockReset();
+    generateContentStream.mockImplementation(async () => stream("ok"));
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+  });
+
+  it("responde 429 a la petición 21 sin llamar al SDK", async () => {
+    const body = { question: "hola", chunks: [chunk(1)] };
+    const ip = "198.51.100.77";
+    for (let i = 0; i < 20; i++) {
+      expect((await post(body, ip)).status).toBe(200);
+    }
+    expect(generateContentStream).toHaveBeenCalledTimes(20);
+
+    const blocked = await post(body, ip);
+    expect(blocked.status).toBe(429);
+    expect(await blocked.text()).toBe("El servicio está ocupado, intenta en unos segundos.");
+    expect(generateContentStream).toHaveBeenCalledTimes(20);
+
+    // Otra IP no se ve afectada.
+    expect((await post(body, "198.51.100.78")).status).toBe(200);
+  });
+
+  it("no registra la IP en los logs", async () => {
+    generateContentStream.mockRejectedValue(new Error("fallo"));
+    await post({ question: "hola", chunks: [chunk(1)] }, "192.0.2.99");
+    expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain("192.0.2.99");
   });
 });

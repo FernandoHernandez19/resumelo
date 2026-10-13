@@ -55,7 +55,7 @@ export function SourcePanel() {
             Cerrar
           </Button>
         </div>
-        <p className="whitespace-pre-wrap break-words text-sm text-neutral-700 dark:text-neutral-300">
+        <p className="max-h-[50dvh] overflow-y-auto whitespace-pre-wrap break-words text-sm text-neutral-700 dark:text-neutral-300">
           {chunk.text}
         </p>
       </Card>
