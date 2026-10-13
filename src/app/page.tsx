@@ -2,6 +2,7 @@ import { ChatPanel } from "@/components/chat/ChatPanel";
 import { SourcePanel } from "@/components/document/SourcePanel";
 import { ChunkPreview } from "@/components/document/ChunkPreview";
 import { DocumentUploader } from "@/components/document/DocumentUploader";
+import { PrivacyNotice } from "@/components/document/PrivacyNotice";
 import { Badge } from "@/components/ui";
 
 export default function Home() {
@@ -17,6 +18,7 @@ export default function Home() {
         </p>
       </header>
       <DocumentUploader />
+      <PrivacyNotice />
       <ChunkPreview />
       <ChatPanel />
       <SourcePanel />
