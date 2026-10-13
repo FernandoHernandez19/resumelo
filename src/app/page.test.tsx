@@ -9,5 +9,7 @@ describe("Página inicial", () => {
       screen.getByRole("heading", { level: 1, name: "Resúmelo" }),
     ).toBeInTheDocument();
     expect(screen.getByText(/haz preguntas/i)).toBeInTheDocument();
+    expect(screen.getByText("Demo")).toBeInTheDocument();
+    expect(screen.getByTestId("privacy-notice")).toBeInTheDocument();
   });
 });
