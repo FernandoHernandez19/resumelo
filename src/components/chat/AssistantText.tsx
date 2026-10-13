@@ -28,7 +28,7 @@ export function AssistantText({ text }: { text: string }) {
             type="button"
             aria-label={label}
             onClick={() => setActiveChunk(segment.id)}
-            className="mx-0.5 rounded bg-indigo-100 px-1 text-xs font-semibold text-indigo-800 hover:bg-indigo-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-200 dark:hover:bg-indigo-900"
+            className="relative mx-0.5 rounded bg-indigo-100 px-1.5 py-0.5 text-xs after:absolute after:-inset-x-1 after:-inset-y-3 after:content-[''] font-semibold text-indigo-800 hover:bg-indigo-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-200 dark:hover:bg-indigo-900"
           >
             [{segment.id}]
           </button>
