@@ -15,10 +15,14 @@ vi.mock("@/lib/server/gemini", () => ({
 
 const chunk = (id: number, text = "texto") => ({ id, page: 1, text });
 
-function post(body: unknown) {
+let nextIp = 0;
+
+/** Cada petición usa una IP distinta para no activar el limitador por IP. */
+function post(body: unknown, ip = `10.0.0.${++nextIp}`) {
   return POST(
     new Request("http://localhost/api/chat", {
       method: "POST",
+      headers: { "x-forwarded-for": ip },
       body: typeof body === "string" ? body : JSON.stringify(body),
     }),
   );

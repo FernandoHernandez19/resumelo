@@ -5,6 +5,7 @@ import {
   MAX_TOTAL_CHUNK_CHARS,
 } from "@/lib/chatLimits";
 import { getGeminiClient, getGeminiModel } from "@/lib/server/gemini";
+import { chatRateLimiter, getClientIp } from "@/lib/server/rateLimit";
 import {
   buildPrompt,
   SUMMARY_INSTRUCTION,
@@ -104,6 +105,10 @@ function logError(error: unknown): void {
 }
 
 export async function POST(request: Request): Promise<Response> {
+  // Antes de leer el cuerpo o llamar a Gemini. La IP no se registra en logs.
+  if (!chatRateLimiter.check(getClientIp(request.headers))) {
+    return textResponse(BUSY_MESSAGE, 429);
+  }
   const raw = await request.text();
   if (raw.length > MAX_BODY_BYTES) {
     return textResponse("La solicitud es demasiado grande.", 400);
